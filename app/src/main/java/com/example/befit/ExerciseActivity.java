@@ -1,6 +1,7 @@
 package com.example.befit;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -98,8 +99,11 @@ public class ExerciseActivity extends AppCompatActivity {
         } else {
             // All exercises have been completed
             exerciseDurationTextView.setText("Exercise Completed for today");
+            // Decrease the font size
+            exerciseDurationTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15); // Change 16 to your desired font size
         }
     }
+
 
     private void startTimer(long durationMillis) {
         exerciseTimer = new CountDownTimer(durationMillis, 1000) {
