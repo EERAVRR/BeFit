@@ -18,5 +18,6 @@
     <color name="background_color">#FFFFFF</color>
     <color name="pink">#FFC0CB</color>
     <color name="darker_gray">#676767</color>
+    <color name="dark_blue">#00158C</color>
 
 </resources>

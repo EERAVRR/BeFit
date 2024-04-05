@@ -83,9 +83,18 @@
             android:exported="true">
         </activity>
 
-<!--        <Recyclerview android:name=".ExerciseAdapter" />-->
+<!--        <activity android:name=".ProgressTracker"-->
+<!--            android:exported="true">-->
+<!--        </activity>-->
+
+        <activity android:name=".ProgressActivity" />
+
+
+        <!--        <Recyclerview android:name=".ExerciseAdapter" />-->
 
         <activity android:name=".Exercise" />
+
+
 
 
 

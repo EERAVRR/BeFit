@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F9F9F9">
+
+    <!-- Header Text -->
+    <TextView
+        android:id="@+id/headerTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Fitness Progress"
+        android:textSize="32sp"
+        android:textColor="#333333"
+        android:layout_marginTop="32dp"
+        android:layout_centerHorizontal="true"/>
+
+    <!-- Divider Line -->
+    <View
+        android:id="@+id/divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#CCCCCC"
+        android:layout_below="@id/headerTextView"
+        android:layout_marginTop="16dp"/>
+
+    <!-- TextView to display total exercises completed -->
+    <TextView
+        android:id="@+id/totalExercisesTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Total Exercises Completed"
+        android:textSize="24sp"
+        android:textColor="#333333"
+        android:layout_below="@id/divider"
+        android:layout_marginTop="32dp"
+        android:layout_marginStart="32dp"/>
+
+    <!-- TextView to display total pause time -->
+    <TextView
+        android:id="@+id/totalPauseTimeTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Total Pause Time (seconds)"
+        android:textSize="24sp"
+        android:textColor="#333333"
+        android:layout_below="@id/totalExercisesTextView"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="32dp"/>
+
+    <!-- TextView to display total calories burned -->
+    <TextView
+        android:id="@+id/totalCaloriesBurnedTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Total Calories Burned"
+        android:textSize="24sp"
+        android:textColor="#333333"
+        android:layout_below="@id/totalPauseTimeTextView"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="32dp"/>
+
+    <!-- Button to update progress -->
+    <Button
+        android:id="@+id/updateProgressButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Update Progress"
+        android:textSize="20sp"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/button_background"
+        android:layout_below="@id/totalCaloriesBurnedTextView"
+        android:layout_marginTop="48dp"
+        android:layout_centerHorizontal="true"/>
+
+    <Button
+        android:id="@+id/resetProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Reset Progress"
+        android:textSize="20sp"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/button_background"
+        android:layout_below="@id/updateProgressButton"
+        android:layout_marginTop="48dp"
+        android:layout_centerHorizontal="true"/>
+
+</RelativeLayout>
