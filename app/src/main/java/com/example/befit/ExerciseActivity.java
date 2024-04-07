@@ -1,9 +1,12 @@
 package com.example.befit;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.util.Log;
 import android.util.TypedValue;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -12,6 +15,7 @@ import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -34,7 +38,7 @@ public class ExerciseActivity extends AppCompatActivity {
     private int currentExerciseIndex = 0;
     private CountDownTimer exerciseTimer;
     private Map<Integer, Float> exerciseRatings = new HashMap<>();
-    private boolean isExercisePaused = false;
+    private boolean isExercisePaused;
     private long remainingTimeMillis;
     private long exerciseDurationMillis;
     private long elapsedMillis;
@@ -44,7 +48,17 @@ public class ExerciseActivity extends AppCompatActivity {
     private Button resetButton;
 
     private ProgressTracker progressTracker;
+    private long pauseDurationMillis;
+
     private DatabaseHelper databaseHelper;
+    private static final int CALORIES_PER_EXERCISE = 5;
+
+    private long pauseStartTime;
+    private long totalExerciseDuration;
+
+    private static final int PROGRESS_ACTIVITY_REQUEST_CODE = 1;
+    private Intent progressIntent;
+    private long individualExerciseDurationMillis;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,7 +68,7 @@ public class ExerciseActivity extends AppCompatActivity {
         databaseHelper = new DatabaseHelper(this);
 
         // Initialize the ProgressTracker instance
-        progressTracker = ProgressTracker.getInstance();
+        progressTracker = ProgressTracker.getInstance(this);
 
         // Initialize UI elements
         startButton = findViewById(R.id.startButton);
@@ -98,17 +112,24 @@ public class ExerciseActivity extends AppCompatActivity {
         // Initialize bottom navigation view
         bottomNavigationView = findViewById(R.id.bottomNavigationView);
         bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
-
-            if (item.getItemId() == R.id.navigation_home) {
+            // Handle navigation item clicks here
+            int itemId = item.getItemId();
+            if (itemId == R.id.navigation_home) {
                 // Start HomeActivity
                 startActivity(new Intent(ExerciseActivity.this, HomeActivity.class));
-                finish(); // Optional: Close the current activity if necessary
+                finish(); // Close the current activity if necessary
+                return true;
+            }
+            if (itemId == R.id.navigation_profile) {
+                startActivity(new Intent(ExerciseActivity.this, ProfileActivity.class));
+                finish(); // Close the current activity if necessary
                 return true;
             } else {
                 return false;
             }
-
         });
+
+
 
         // Set the exercise duration (in milliseconds)
         exerciseDurationMillis = 5000; // Example: 20 seconds
@@ -124,18 +145,45 @@ public class ExerciseActivity extends AppCompatActivity {
             }
         });
 
-
         Button exitButton = findViewById(R.id.exitButton);
         exitButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Navigate to the HomeActivity
-                Intent intent = new Intent(ExerciseActivity.this, HomeActivity.class);
-                startActivity(intent);
-                finish(); // Finish the ExerciseActivity
+                // Create an intent to navigate to the ProgressActivity
+                Intent intent = createProgressIntent();
+
+                Log.d("ProgressLogging", "Exiting ExerciseActivity. Starting ProgressActivity...");
+
+                // Set the result to indicate success and include the intent with progress data
+                setResult(Activity.RESULT_OK, intent);
+
+                // Finish the ExerciseActivity
+                finish();
             }
         });
     }
+    public Intent createProgressIntent() {
+        // Get the instance of ProgressTracker
+        ProgressTracker progressTracker = ProgressTracker.getInstance(this); // Provide the appropriate context
+
+        // Retrieve the required progress data
+        int totalExercisesCompleted = progressTracker.getTotalExercisesCompleted();
+        long totalPauseTimeMillis = progressTracker.getTotalPauseTimeMillis();
+        double totalCaloriesBurned = progressTracker.getTotalCaloriesBurned();
+        long totalExerciseDurationMillis = progressTracker.getTotalExerciseDurationMillis();
+
+        // Create an intent to navigate to the ProgressActivity
+        Intent intent = new Intent(ExerciseActivity.this, ProgressActivity.class);
+
+        // Pass the progress data to ProgressActivity
+        intent.putExtra("totalExercisesCompleted", totalExercisesCompleted);
+        intent.putExtra("totalPauseTimeMillis", totalPauseTimeMillis);
+        intent.putExtra("totalCaloriesBurned", totalCaloriesBurned);
+        intent.putExtra("totalExerciseDurationMillis", totalExerciseDurationMillis);
+
+        return intent;
+    }
+
 
     private void startExerciseAfterDelay(long delayMillis) {
         // Show countdown message with delay
@@ -163,9 +211,17 @@ public class ExerciseActivity extends AppCompatActivity {
 
     private void startExercise() {
         // Check if there are more exercises to display
+        Button pauseButton = findViewById(R.id.pauseButton);
+        pauseButton.setEnabled(false);
         exerciseStartTime = System.currentTimeMillis();
+
+//        totalExerciseDuration = 0;
+
         if (currentExerciseIndex < exerciseImages.size()) {
             // Shuffle the exercise images to ensure randomness (only shuffle once)
+//            Toast.makeText(this, "Exercise started!", Toast.LENGTH_SHORT).show();
+            pauseButton.setEnabled(true);
+
             if (currentExerciseIndex == 0) {
                 Collections.shuffle(exerciseImages);
             }
@@ -182,6 +238,9 @@ public class ExerciseActivity extends AppCompatActivity {
 
             // Start countdown timer for the exercise duration
             startTimer(exerciseDurationMillis); // Use exerciseDurationMillis variable for exercise duration
+
+            // Re-enable the pause button
+            pauseButton.setEnabled(true);
         } else {
             // All exercises have been completed
             exerciseDurationTextView.setText("Exercise Completed for today");
@@ -189,7 +248,6 @@ public class ExerciseActivity extends AppCompatActivity {
             exerciseDurationTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15); // Change 16 to your desired font size
         }
     }
-
 
 
     private void startTimer(long durationMillis) {
@@ -246,6 +304,7 @@ public class ExerciseActivity extends AppCompatActivity {
         // Cancel the exercise timer to prevent memory leaks
         if (exerciseTimer != null) {
             exerciseTimer.cancel();
+//            passProgressDataToProgressActivity();
         }
     }
 
@@ -277,77 +336,116 @@ public class ExerciseActivity extends AppCompatActivity {
         }
     }
 
-    private void onExerciseCompleted() {
-        // Update the progress tracker when an exercise is completed
-        progressTracker.completeExercise(); // Update progress tracker
 
-        // Show a completion message
+    private void onExerciseCompleted() {
+        long elapsedTime = System.currentTimeMillis() - exerciseStartTime; // Calculate exercise duration
+
+        // Add exercise duration to the total exercise duration
+        totalExerciseDuration += elapsedTime;
+
+        // Log the exercise completion details for debugging
+        Log.d("ExerciseActivity", "Exercise completed. Duration: " + elapsedTime + " ms");
+        // Set exerciseCompleted flag to true
+        progressTracker.setExerciseCompleted(true);
+
+        // Add exercise duration to the progress tracker
+        progressTracker.addExerciseDuration(elapsedTime);
+
+
+        // Increment total exercises completed
+        progressTracker.completeExercise();
+
+
+        // Add fixed calories burned for each exercise completed (5 calories per exercise)
+        progressTracker.addCaloriesBurned(5);
+
         Toast.makeText(this, "Exercise completed!", Toast.LENGTH_SHORT).show();
 
-        // Optionally, you can update the UI or take any other actions based on exercise completion.
+        // Log calories burned for debugging
+        Log.d("ExerciseActivity", "Calories Burned: " + 5); // Fixed value of 5 calories per exercise
     }
+
+
+
+
 
     private void pauseExercise() {
-        // Pause the exercise timer
-        if (exerciseTimer != null) {
-            exerciseTimer.cancel();
+        if (!isExercisePaused) {
+            // Record the start time of pause only if the exercise is not already paused
+            pauseStartTime = System.currentTimeMillis();
             isExercisePaused = true;
-
-            // Calculate remaining time by subtracting elapsed time from total duration
-            remainingTimeMillis = exerciseDurationMillis - (System.currentTimeMillis() - exerciseStartTime);
-
-            // Update button text to indicate resume
+            // Cancel the exercise timer if it's running
+            if (exerciseTimer != null) {
+                exerciseTimer.cancel();
+            }
+            // Update the UI to reflect the pause state
             Button pauseButton = findViewById(R.id.pauseButton);
             pauseButton.setText("Resume Exercise");
+            pauseButton.setEnabled(true);
+
+            // Calculate the remaining time left for the current exercise
+//            remainingTimeMillis = exerciseDurationMillis - elapsedMillis;
+
+            remainingTimeMillis = exerciseDurationMillis - (System.currentTimeMillis() - exerciseStartTime);
+
+
+            // Notify the progress tracker about the pause
+            progressTracker.setExercisePaused(true);
+
         }
-        // Update progress tracker when exercise is paused
-        progressTracker.addPauseTime(exerciseDurationMillis - remainingTimeMillis);
+
     }
+
 
 
     private void resumeExercise() {
-        // Resume the exercise timer
-        if (exerciseTimer != null) {
-            startTimer(remainingTimeMillis); // Resume timer with remaining time
-            isExercisePaused = false;
+        if (exerciseTimer != null && isExercisePaused) {
+            long pauseEndTime = System.currentTimeMillis(); // Get the end time of pause
+            long pauseDurationMillis = pauseEndTime - pauseStartTime; // Calculate pause duration
 
-            // Update button text to indicate pause
+
+//            exerciseStartTime += pauseDurationMillis;
+
+            exerciseStartTime = System.currentTimeMillis() - (exerciseDurationMillis - remainingTimeMillis);
+
+            // Resume timer with the corrected remaining time
+            startTimer(remainingTimeMillis);
+
+            // Update UI and flags
             Button pauseButton = findViewById(R.id.pauseButton);
             pauseButton.setText("Pause Exercise");
+            isExercisePaused = false;
+            progressTracker.setExercisePaused(false);
 
-            // No need to update elapsed time here
+            progressTracker.addPauseTime(pauseDurationMillis);
+            Log.d("ExerciseActivity", "Exercise resumed. Pause duration: " + pauseDurationMillis);
         }
+        // Exercise start time should not be updated here
     }
 
     private void resetTimer() {
-        // Cancel the current exercise timer if it's running
         if (exerciseTimer != null) {
             exerciseTimer.cancel();
         }
-
-        // Reset timer-related variables for the current exercise
+        // Reset timer-related variables
         elapsedMillis = 0;
         remainingTimeMillis = exerciseDurationMillis;
-
+        exerciseStartTime = System.currentTimeMillis(); // Reset exercise start time
+        // Reset progress tracker
+        progressTracker.completeExercise(); // Increment total exercises completed
+        progressTracker.resetExerciseDuration(); // Reset exercise duration
         // Update UI to initial state
         exerciseProgressBar.setProgress(0);
         updateTimerText(exerciseDurationMillis);
-
-        // Update progress tracker when timer is reset
-        progressTracker.completeExercise();
-
-        // Hide all exercise images except the current one
         hideAllExerciseImages();
         if (currentExerciseIndex < exerciseImages.size()) {
             ImageView currentExerciseImage = exerciseImages.get(currentExerciseIndex);
             currentExerciseImage.setVisibility(View.VISIBLE);
         }
-
         // Start the exercise if it's not paused
         if (!isExercisePaused) {
             startTimer(remainingTimeMillis);
         }
     }
-
 }
 

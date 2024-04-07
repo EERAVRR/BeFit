@@ -37,11 +37,33 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_RATING = "rating";
     private static final String COLUMN_TIMESTAMP = "timestamp";
 
+
+    // Profiles table column names
+    private static final String COLUMN_NAME = "name";
+    private static final String COLUMN_DATE_OF_BIRTH = "date_of_birth";
+    private static final String COLUMN_COUNTRY = "country";
+    private static final String TABLE_PROFILES = "profiles";
+    private static final String COLUMN_GENDER = "gender";
+    private static final String COLUMN_PHONE = "phone_number";
+
     // Create users table query
     private static final String CREATE_TABLE_USERS = "CREATE TABLE " + TABLE_USERS + "(" +
             COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
             COLUMN_USERNAME + " TEXT, " +
             COLUMN_PASSWORD + " TEXT)";
+
+    // Create profiles table query
+// Create profiles table query
+    private static final String CREATE_TABLE_PROFILES = "CREATE TABLE " + TABLE_PROFILES + "(" +
+            COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+            COLUMN_USER_ID + " INTEGER, " +
+            COLUMN_NAME + " TEXT, " +
+            COLUMN_DATE_OF_BIRTH + " TEXT, " +
+            COLUMN_COUNTRY + " TEXT, " +
+            COLUMN_GENDER + " TEXT, " +  // Add missing column
+            COLUMN_PHONE + " TEXT, " +
+            "FOREIGN KEY(" + COLUMN_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COLUMN_ID + "))";
+
 
     // Create exercises table query
     private static final String CREATE_TABLE_EXERCISES = "CREATE TABLE " + TABLE_EXERCISES + "(" +
@@ -70,6 +92,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL(CREATE_TABLE_USERS);
         db.execSQL(CREATE_TABLE_EXERCISES);
         db.execSQL(CREATE_TABLE_EXERCISE_RATINGS);
+        db.execSQL(CREATE_TABLE_PROFILES);
     }
 
     @Override
@@ -78,6 +101,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_EXERCISES);
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_EXERCISE_RATINGS);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_PROFILES);
         // Create tables again
         onCreate(db);
     }
@@ -102,6 +126,81 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cursor.close();
         return count > 0;
     }
+    public long insertProfile(long userId, String name, String dateOfBirth, String country,String gender, String phoneNumber) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_USER_ID, userId);
+        values.put(COLUMN_NAME, name);
+        values.put(COLUMN_DATE_OF_BIRTH, dateOfBirth);
+        values.put(COLUMN_COUNTRY, country);
+        values.put(COLUMN_GENDER, gender);
+        values.put(COLUMN_PHONE, phoneNumber);
+        return db.insert(TABLE_PROFILES, null, values);
+    }
+
+    public Cursor getProfile(long userId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT * FROM " + TABLE_PROFILES +
+                " WHERE " + COLUMN_USER_ID + " = ?";
+        return db.rawQuery(query, new String[]{String.valueOf(userId)});
+    }
+
+    public void updateProfile(long userId, String name, String dateOfBirth, String country, String gender, String phoneNumber) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_NAME, name);
+        values.put(COLUMN_DATE_OF_BIRTH, dateOfBirth);
+        values.put(COLUMN_COUNTRY, country);
+        values.put(COLUMN_GENDER, gender);
+        values.put(COLUMN_PHONE, phoneNumber);
+        db.update(TABLE_PROFILES, values, COLUMN_USER_ID + " = ?", new String[]{String.valueOf(userId)});
+    }
+
+    public static String getColumnName() {
+        return COLUMN_NAME;
+    }
+
+    public static String getColumnDateOfBirth() {
+        return COLUMN_DATE_OF_BIRTH;
+    }
+
+    public static String getColumnCountry() {
+        return COLUMN_COUNTRY;
+    }
+    public long getUserIdFromAuthenticationSystem(String username, String password) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        long userId = -1;
+
+        // Define the columns you want to retrieve from the database
+        String[] projection = {COLUMN_ID};
+
+        // Define the selection criteria
+        String selection = COLUMN_USERNAME + " = ? AND " + COLUMN_PASSWORD + " = ?";
+        String[] selectionArgs = {username, password};
+
+        // Query the database to find the user with the given username and password
+        Cursor cursor = db.query(
+                TABLE_USERS,          // The table to query
+                projection,           // The columns to return
+                selection,            // The columns for the WHERE clause
+                selectionArgs,        // The values for the WHERE clause
+                null,                 // Don't group the rows
+                null,                 // Don't filter by row groups
+                null                  // The sort order
+        );
+
+        // If a user is found, get their ID
+        if (cursor != null && cursor.moveToFirst()) {
+            int columnIndex = cursor.getColumnIndex(COLUMN_ID);
+            if (columnIndex != -1) {
+                userId = cursor.getLong(columnIndex);
+            }
+            cursor.close();
+        }
+
+        // Return the user ID
+        return userId;
+    }
 
     // Exercise operations
 
@@ -122,17 +221,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_EXERCISE_ID, exerciseId);
         values.put(COLUMN_USER_ID, userId);
         values.put(COLUMN_RATING, rating);
-//        values.put(COLUMN_TIMESTAMP, timestamp);
         return db.insert(TABLE_EXERCISE_RATINGS, null, values);
     }
 
     // Reset exercise ratings and progress tracking
     public void resetDailyData() {
         SQLiteDatabase db = this.getWritableDatabase();
-        // Calculate the timestamp for 7 days ago
-        long weekAgoTimestamp = System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000;
-        // Delete exercise ratings older than 7 days
-        db.delete(TABLE_EXERCISE_RATINGS, COLUMN_TIMESTAMP + " < ?", new String[]{String.valueOf(weekAgoTimestamp)});
+        // Get the timestamp for the start of the current day
+        long startOfDayTimestamp = calculateStartOfDay(System.currentTimeMillis());
+        // Delete exercise ratings for the current day
+        db.delete(TABLE_EXERCISE_RATINGS, COLUMN_TIMESTAMP + " >= ?", new String[]{String.valueOf(startOfDayTimestamp)});
     }
 
     // Method to reset data every day at 12:00 AM
@@ -171,5 +269,24 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         };
         // Execute reset task after delay
         new android.os.Handler().postDelayed(resetTask, delayMillis);
+    }
+
+    // Calculate the start of the day for a given timestamp
+    private long calculateStartOfDay(long timestamp) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(timestamp);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
+    }
+
+    public void resetProgressForDay(long startOfDayInMillis, long endOfDayInMillis) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Perform the reset operation for the current day, e.g., delete or update records within the specified time range
+        // For example:
+        db.delete(TABLE_EXERCISE_RATINGS, COLUMN_TIMESTAMP + " >= ? AND " + COLUMN_TIMESTAMP + " <= ?", new String[]{String.valueOf(startOfDayInMillis), String.valueOf(endOfDayInMillis)});
+        db.close();
     }
 }

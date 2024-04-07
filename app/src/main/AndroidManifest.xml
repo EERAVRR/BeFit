@@ -89,6 +89,10 @@
 
         <activity android:name=".ProgressActivity" />
 
+        <activity android:name=".SetTargetActivity" />
+
+        <activity android:name=".ProfileActivity" />
+
 
         <!--        <Recyclerview android:name=".ExerciseAdapter" />-->
 

@@ -1,25 +1,35 @@
 package com.example.befit;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.util.Log;
+
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 public class ProgressTracker {
     private static ProgressTracker instance;
     private int totalExercisesCompleted;
+    private boolean isExercisePaused;
     private long totalPauseTimeMillis;
     private int totalCaloriesBurned;
+    private long totalExerciseDurationMillis;
     private List<ExerciseEntry> exerciseHistory;
 
-    private ProgressTracker() {
-        this.totalExercisesCompleted = 0;
-        this.totalPauseTimeMillis = 0;
-        this.totalCaloriesBurned = 0;
-        this.exerciseHistory = new ArrayList<>();
-    }
+    private boolean exerciseCompleted;
 
-    public static ProgressTracker getInstance() {
+    private SharedPreferences sharedPreferences;
+    private static final String PREF_NAME = "progress_data";
+
+    private ProgressTracker(Context context) {
+        sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        exerciseHistory = new ArrayList<>(); // Initialize exerciseHistory
+        loadProgress(); // Load progress data from SharedPreferences
+    }
+    public static synchronized ProgressTracker getInstance(Context context) {
         if (instance == null) {
-            instance = new ProgressTracker();
+            instance = new ProgressTracker(context.getApplicationContext());
         }
         return instance;
     }
@@ -36,43 +46,132 @@ public class ProgressTracker {
         return totalCaloriesBurned;
     }
 
+    public long getTotalExerciseDurationMillis() {
+        return totalExerciseDurationMillis;
+    }
+    public void setExerciseCompleted(boolean exerciseCompleted) {
+        this.exerciseCompleted = exerciseCompleted;
+    }
+
     public void completeExercise() {
+        exerciseCompleted = true;
         totalExercisesCompleted++;
         ExerciseEntry entry = new ExerciseEntry(ExerciseType.EXERCISE, System.currentTimeMillis());
         exerciseHistory.add(entry);
+        Log.d("ProgressTracker", "Exercise completed. Total exercises completed: " + totalExercisesCompleted);
+        saveProgress(); // Save progress data
     }
+
+    private void saveProgress() {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt("totalExercisesCompleted", totalExercisesCompleted);
+        editor.putLong("totalPauseTimeMillis", totalPauseTimeMillis);
+        editor.putInt("totalCaloriesBurned", totalCaloriesBurned);
+        editor.putLong("totalExerciseDurationMillis", totalExerciseDurationMillis);
+        editor.apply();
+    }
+
+    private void loadProgress() {
+        totalExercisesCompleted = sharedPreferences.getInt("totalExercisesCompleted", 0);
+        totalPauseTimeMillis = sharedPreferences.getLong("totalPauseTimeMillis", 0);
+        totalCaloriesBurned = sharedPreferences.getInt("totalCaloriesBurned", 0);
+        totalExerciseDurationMillis = sharedPreferences.getLong("totalExerciseDurationMillis", 0);
+    }
+    public void addExerciseDuration(long exerciseDurationMillis) {
+        if (exerciseCompleted && exerciseDurationMillis > 0) {
+//        if (exerciseDurationMillis > 0) {
+            totalExerciseDurationMillis += exerciseDurationMillis;
+            // Log message to indicate exercise duration added
+            Log.d("ProgressTracker", "Exercise duration added: " + exerciseDurationMillis + " ms. Total exercise duration: " + totalExerciseDurationMillis);
+        } else {
+            // Log a warning if trying to add duration for an incomplete or invalid exercise duration
+            Log.w("ProgressTracker", "Trying to add invalid duration for an incomplete exercise.");
+        }
+    }
+
+    public void resetExerciseDuration() {
+        totalExerciseDurationMillis = 0;
+    }
+
+    public void addCaloriesBurned(long caloriesBurned) {
+        // Add calories burned only if an exercise was completed
+        if (exerciseCompleted && caloriesBurned > 0) {
+            totalCaloriesBurned += caloriesBurned;
+
+            // Log calories burned for debugging
+            Log.d("ProgressTracker", "Calories Burned: " + totalCaloriesBurned);
+        }
+    }
+
 
     public void addPauseTime(long pauseTimeMillis) {
-        // Add pause time only if the exercise was paused
-        if (pauseTimeMillis > 0) {
+        // Add pause time only if the exercise was completed
+        if (exerciseCompleted && pauseTimeMillis > 0) {
             totalPauseTimeMillis += pauseTimeMillis;
-            ExerciseEntry entry = new ExerciseEntry(ExerciseType.PAUSE, System.currentTimeMillis(), pauseTimeMillis);
+            ExerciseEntry entry = new ExerciseEntry(ExerciseType.PAUSE, System.currentTimeMillis() - pauseTimeMillis);
             exerciseHistory.add(entry);
+
+            // Log message to indicate pause time added
+            Log.d("ProgressTracker", "Pause time added: " + pauseTimeMillis + " ms. Total pause time: " + totalPauseTimeMillis);
         }
     }
 
-    public void addCaloriesBurned(long exerciseDurationMillis) {
-        // Calculate calories burned based on exercise duration
-        double hours = (double) exerciseDurationMillis / (1000 * 60 * 60);
-        int caloriesBurned = (int) (hours * 200); // Assuming 200 calories burned per hour
-        // Add calories burned only if an exercise was completed
-        if (caloriesBurned > 0) {
-            totalCaloriesBurned += caloriesBurned;
-            ExerciseEntry entry = new ExerciseEntry(ExerciseType.EXERCISE, System.currentTimeMillis(), exerciseDurationMillis);
-            exerciseHistory.add(entry);
-        }
-    }
+    public int getExercisesCompletedToday() {
+        // Get the current date
+        Calendar today = Calendar.getInstance();
+        today.set(Calendar.HOUR_OF_DAY, 0);
+        today.set(Calendar.MINUTE, 0);
+        today.set(Calendar.SECOND, 0);
 
-
-    public void displayProgress() {
-        System.out.println("Total exercises completed: " + totalExercisesCompleted);
-        System.out.println("Total pause time (in seconds): " + totalPauseTimeMillis / 1000);
-        System.out.println("Total calories burned: " + totalCaloriesBurned);
-        System.out.println("Exercise History:");
+        // Count exercises completed today
+        int count = 0;
         for (ExerciseEntry entry : exerciseHistory) {
-            System.out.println(entry);
+            Calendar exerciseDate = Calendar.getInstance();
+            exerciseDate.setTimeInMillis(entry.getTimestamp());
+
+            if (exerciseDate.after(today) || exerciseDate.equals(today)) {
+                if (entry.getType() == ExerciseType.EXERCISE) {
+                    count++;
+                }
+            }
         }
+        return count;
     }
+
+    public void resetProgress() {
+        // Reset all progress data
+        totalExercisesCompleted = 0;
+        totalPauseTimeMillis = 0;
+        totalCaloriesBurned = 0;
+        totalExerciseDurationMillis = 0;
+        exerciseHistory.clear(); // Clear exercise history
+        saveProgress(); // Save reset progress data
+    }
+
+
+    public int getExercisesCompletedThisWeek() {
+        // Get the current week of the year
+        Calendar calendar = Calendar.getInstance();
+        int currentWeek = calendar.get(Calendar.WEEK_OF_YEAR);
+
+        // Count exercises completed this week
+        int count = 0;
+        for (ExerciseEntry entry : exerciseHistory) {
+            Calendar entryCalendar = Calendar.getInstance();
+            entryCalendar.setTimeInMillis(entry.getTimestamp());
+            int entryWeek = entryCalendar.get(Calendar.WEEK_OF_YEAR);
+            if (entryWeek == currentWeek && entry.getType() == ExerciseType.EXERCISE) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public void setExercisePaused(boolean paused) {
+        isExercisePaused = paused;
+    }
+
+
 
     private static class ExerciseEntry {
         private ExerciseType type;
@@ -82,21 +181,15 @@ public class ProgressTracker {
         public ExerciseEntry(ExerciseType type, long timestamp) {
             this.type = type;
             this.timestamp = timestamp;
+            this.durationMillis = 0; // Set duration to 0 for exercise without duration
+        }
+        public ExerciseType getType() {
+            return type;
         }
 
-        public ExerciseEntry(ExerciseType type, long timestamp, long durationMillis) {
-            this.type = type;
-            this.timestamp = timestamp;
-            this.durationMillis = durationMillis;
-        }
-
-        @Override
-        public String toString() {
-            if (type == ExerciseType.EXERCISE) {
-                return "Exercise at " + timestamp;
-            } else {
-                return "Pause for " + (durationMillis / 1000) + " seconds at " + timestamp;
-            }
+        // Getter method for timestamp
+        public long getTimestamp() {
+            return timestamp;
         }
     }
 
