@@ -1,6 +1,7 @@
 package com.example.befit;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -45,11 +46,15 @@ public class RegisterActivity extends AppCompatActivity {
             // Attempt to register the user
             long rowId = databaseHelper.insertUser(username, password);
             if (rowId != -1) {
-                // Registration successful, show success message
+                // Registration successful, log user details
+                Log.d("RegisterActivity", "User registered successfully - ID: " + rowId + ", Username: " + username + ", Password: " + password);
+                // Show success message
                 Toast.makeText(RegisterActivity.this, "User registered successfully", Toast.LENGTH_SHORT).show();
                 finish(); // Finish RegisterActivity
             } else {
                 // Registration failed, show error message
+                Log.e("RegisterActivity", "Failed to register user");
+
                 Toast.makeText(RegisterActivity.this, "Failed to register user", Toast.LENGTH_SHORT).show();
             }
         } else {

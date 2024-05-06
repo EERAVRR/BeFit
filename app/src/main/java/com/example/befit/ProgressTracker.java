@@ -20,16 +20,35 @@ public class ProgressTracker {
     private boolean exerciseCompleted;
 
     private SharedPreferences sharedPreferences;
+    private static final String KEY_EXERCISES_COMPLETED = "exercises_completed";
     private static final String PREF_NAME = "progress_data";
+    private long userId; // Add user ID field
 
-    private ProgressTracker(Context context) {
-        sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        exerciseHistory = new ArrayList<>(); // Initialize exerciseHistory
-        loadProgress(); // Load progress data from SharedPreferences
-    }
-    public static synchronized ProgressTracker getInstance(Context context) {
-        if (instance == null) {
-            instance = new ProgressTracker(context.getApplicationContext());
+//    private ProgressTracker(Context context, long userId) {
+//        this.userId = userId;
+//        sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+//        exerciseHistory = new ArrayList<>(); // Initialize exerciseHistory
+//        loadProgress(); // Load progress data from SharedPreferences
+//
+//    }
+private ProgressTracker(Context context, long userId) {
+    // Use user ID as part of shared preferences file name
+    String prefFileName = PREF_NAME + userId;
+    sharedPreferences = context.getSharedPreferences(prefFileName, Context.MODE_PRIVATE);
+    exerciseHistory = new ArrayList<>(); // Initialize exerciseHistory
+    loadProgress(); // Load progress data from SharedPreferences
+}
+
+//    public static synchronized ProgressTracker getInstance(Context context) {
+//        if (instance == null) {
+//            instance = new ProgressTracker(context.getApplicationContext());
+//        }
+//        return instance;
+//    }
+
+    public static synchronized ProgressTracker getInstance(Context context, long userId) {
+        if (instance == null || instance.userId != userId) {
+            instance = new ProgressTracker(context.getApplicationContext(), userId);
         }
         return instance;
     }
@@ -53,14 +72,28 @@ public class ProgressTracker {
         this.exerciseCompleted = exerciseCompleted;
     }
 
+
+//    public void completeExercise() {
+//        exerciseCompleted = true;
+//        int exercisesCompleted = getExercisesCompleted();
+//        totalExercisesCompleted++;
+//        ExerciseEntry entry = new ExerciseEntry(ExerciseType.EXERCISE, System.currentTimeMillis());
+//        exerciseHistory.add(entry);
+//        sharedPreferences.edit().putInt(KEY_EXERCISES_COMPLETED, exercisesCompleted).apply();
+//        Log.d("ProgressTracker", "Exercise completed. Total exercises completed: " + totalExercisesCompleted);
+//        saveProgress(); // Save progress data
+//    }
+
     public void completeExercise() {
-        exerciseCompleted = true;
+        exerciseCompleted = true; // Set exerciseCompleted flag to true
         totalExercisesCompleted++;
         ExerciseEntry entry = new ExerciseEntry(ExerciseType.EXERCISE, System.currentTimeMillis());
         exerciseHistory.add(entry);
+        sharedPreferences.edit().putInt(KEY_EXERCISES_COMPLETED, totalExercisesCompleted).apply(); // Update totalExercisesCompleted in SharedPreferences
         Log.d("ProgressTracker", "Exercise completed. Total exercises completed: " + totalExercisesCompleted);
         saveProgress(); // Save progress data
     }
+
 
     private void saveProgress() {
         SharedPreferences.Editor editor = sharedPreferences.edit();
@@ -147,7 +180,9 @@ public class ProgressTracker {
         exerciseHistory.clear(); // Clear exercise history
         saveProgress(); // Save reset progress data
     }
-
+    public int getExercisesCompleted() {
+        return sharedPreferences.getInt(KEY_EXERCISES_COMPLETED, 0);
+    }
 
     public int getExercisesCompletedThisWeek() {
         // Get the current week of the year

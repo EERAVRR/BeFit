@@ -1,6 +1,7 @@
 package com.example.befit;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Spannable;
@@ -72,19 +73,50 @@ public class LoginActivity extends AppCompatActivity {
         forgotPasswordText.setHighlightColor(Color.TRANSPARENT); // Set highlight color to transparent
     }
 
+//    private void validateLogin() {
+//        String username = usernameEditText.getText().toString();
+//        String password = passwordEditText.getText().toString();
+//
+//        // Check if the username and password are valid
+//        if (databaseHelper.isValidLogin(username, password)) {
+//            // Successful login, navigate to HomeActivity
+//            startActivity(new Intent(LoginActivity.this, HomeActivity.class));
+//            finish(); // Finish LoginActivity
+//        } else {
+//            // Invalid login, show error message
+//            Toast.makeText(LoginActivity.this, "Invalid username or password", Toast.LENGTH_SHORT).show();
+//        }
+//    }
+
     private void validateLogin() {
         String username = usernameEditText.getText().toString();
         String password = passwordEditText.getText().toString();
 
         // Check if the username and password are valid
         if (databaseHelper.isValidLogin(username, password)) {
-            // Successful login, navigate to HomeActivity
-            startActivity(new Intent(LoginActivity.this, HomeActivity.class));
-            finish(); // Finish LoginActivity
+            // Successful login, retrieve userId and store it
+            long userId = databaseHelper.getUserIdFromAuthenticationSystem(username, password);
+            if (userId != -1) {
+                // Save userId to SharedPreferences
+                saveUserIdToSharedPreferences(userId);
+                // Navigate to HomeActivity
+                startActivity(new Intent(LoginActivity.this, HomeActivity.class));
+                finish(); // Finish LoginActivity
+            } else {
+                // Show error message if userId is not found
+                Toast.makeText(LoginActivity.this, "User ID not found", Toast.LENGTH_SHORT).show();
+            }
         } else {
             // Invalid login, show error message
             Toast.makeText(LoginActivity.this, "Invalid username or password", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void saveUserIdToSharedPreferences(long userId) {
+        SharedPreferences sharedPreferences = getSharedPreferences("user_prefs", MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putLong("user_id", userId);
+        editor.apply();
     }
 
     @Override

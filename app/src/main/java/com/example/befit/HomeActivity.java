@@ -23,6 +23,7 @@ public class HomeActivity extends AppCompatActivity {
     private int totalExercisesCompleted = 0;
     private ProgressTracker progressTracker;
 
+    private long userId;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -33,8 +34,12 @@ public class HomeActivity extends AppCompatActivity {
         Button setTargetButton = findViewById(R.id.setTargetButton);
         Button workoutButton = findViewById(R.id.workoutButton);
 
-        progressTracker = ProgressTracker.getInstance(this);
+//        progressTracker = ProgressTracker.getInstance(this);
+        progressTracker = ProgressTracker.getInstance(this, userId);
 
+        // Retrieve the user ID from the DatabaseHelper
+        DatabaseHelper databaseHelper = new DatabaseHelper(this);
+        userId = databaseHelper.getUserIdFromAuthenticationSystem("username", "password"); // Pass the actual username and password here
 
         // Set click listener for the "Set Target" button
 //        Button setTargetButton = findViewById(R.id.setTargetButton);
@@ -79,24 +84,20 @@ public class HomeActivity extends AppCompatActivity {
         // Set click listener for the bottom navigation view
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottomNavigationView);
         bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
-            // Handle navigation item clicks here
             int itemId = item.getItemId();
             if (itemId == R.id.navigation_home) {
-                // Show a toast message indicating already at the home page
                 Toast.makeText(HomeActivity.this, "You are already at the home page", Toast.LENGTH_SHORT).show();
                 return true;
             }
-            // Add conditions for other navigation items if needed
-            if (item.getItemId() == R.id.navigation_profile) {
-                // Start profileActivity
-                startActivity(new Intent(HomeActivity.this, ProfileActivity.class));
-                //finish(); // Optional: Close the current activity if necessary
+            if (itemId == R.id.navigation_profile) {
+                Intent intent = new Intent(HomeActivity.this, ProfileActivity.class);
+                intent.putExtra("user_id", userId);
+                startActivity(intent);
                 return true;
             } else {
                 return false;
             }
         });
-
     }
 }
 //    @Override

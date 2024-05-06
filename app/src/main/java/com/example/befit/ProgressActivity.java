@@ -2,6 +2,7 @@ package com.example.befit;
 
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -21,6 +22,7 @@ public class ProgressActivity extends AppCompatActivity {
     private TextView exerciseDurationTextView;
 
     private Button resetButton;
+    private long userId;
 
     private ProgressTracker progressTracker;
 
@@ -28,6 +30,9 @@ public class ProgressActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.progress_activity);
+
+        // Obtain user ID (you need to implement this method)
+        userId = getCurrentUserId();
 
         // Initialize views
         exercisesCompletedTextView = findViewById(R.id.totalExercisesTextView);
@@ -37,7 +42,7 @@ public class ProgressActivity extends AppCompatActivity {
         resetButton = findViewById(R.id.resetProgress);
 
         // Get instance of ProgressTracker
-        progressTracker = ProgressTracker.getInstance(getApplicationContext());
+        progressTracker = ProgressTracker.getInstance(getApplicationContext(), userId);
 
        //  Initialize bottom navigation view
         bottomNavigationView = findViewById(R.id.bottomNavigationView);
@@ -75,9 +80,10 @@ public class ProgressActivity extends AppCompatActivity {
         private void displayProgressData() {
             long pauseDurationMillis = getIntent().getLongExtra("pauseDurationMillis", 0);
             exercisesCompletedTextView.setText("Total Exercise completed: " + progressTracker.getTotalExercisesCompleted());
-            pauseTimeTextView.setText("Total Pause Time: " + progressTracker.getTotalPauseTimeMillis()/1000);
+            pauseTimeTextView.setText("Total Pause Time: " + progressTracker.getTotalPauseTimeMillis()/1000 + " Sec");
             caloriesBurnedTextView.setText("Total Calories Burned: " + progressTracker.getTotalCaloriesBurned());
-            exerciseDurationTextView.setText("Total Exercise Duration: " + (progressTracker.getTotalExerciseDurationMillis()));
+
+            exerciseDurationTextView.setText("Total Exercise Duration: " + (progressTracker.getTotalExerciseDurationMillis())+" Sec");
 
         }
 
@@ -116,4 +122,10 @@ public class ProgressActivity extends AppCompatActivity {
         super.onResume();
         Log.d("ProgressLogging", "ProgressActivity resumed.");
     }
+    private long getCurrentUserId() {
+        // Retrieve the current user ID from SharedPreferences or any other authentication mechanism
+        SharedPreferences sharedPreferences = getSharedPreferences("user_prefs", MODE_PRIVATE);
+        return sharedPreferences.getLong("user_id", -1); // Return -1 if user ID is not found
+    }
+
 }
