@@ -140,7 +140,7 @@ public class ExerciseActivity extends AppCompatActivity {
 
 
         // Set the exercise duration (in milliseconds)
-        exerciseDurationMillis = 5000;
+        exerciseDurationMillis = 6000;
         Button pauseButton = findViewById(R.id.pauseButton);
         pauseButton.setOnClickListener(new View.OnClickListener() {
             @Override

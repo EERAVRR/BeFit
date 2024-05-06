@@ -73,21 +73,6 @@ public class LoginActivity extends AppCompatActivity {
         forgotPasswordText.setHighlightColor(Color.TRANSPARENT); // Set highlight color to transparent
     }
 
-//    private void validateLogin() {
-//        String username = usernameEditText.getText().toString();
-//        String password = passwordEditText.getText().toString();
-//
-//        // Check if the username and password are valid
-//        if (databaseHelper.isValidLogin(username, password)) {
-//            // Successful login, navigate to HomeActivity
-//            startActivity(new Intent(LoginActivity.this, HomeActivity.class));
-//            finish(); // Finish LoginActivity
-//        } else {
-//            // Invalid login, show error message
-//            Toast.makeText(LoginActivity.this, "Invalid username or password", Toast.LENGTH_SHORT).show();
-//        }
-//    }
-
     private void validateLogin() {
         String username = usernameEditText.getText().toString();
         String password = passwordEditText.getText().toString();
